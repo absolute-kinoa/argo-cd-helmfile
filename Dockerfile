@@ -52,6 +52,8 @@ ARG SOPS_VERSION="v3.10.2"
 # https://github.com/mikefarah/yq/releases
 ARG YQ_VERSION="v4.45.4"
 
+ARG HELM_VALS_VERSION="0.43.3"
+
 # relevant for kubectl if installed
 ARG KUBESEAL_VERSION="0.30.0"
 # curl -v -L 'https://dl.k8s.io/release/stable.txt'
@@ -72,6 +74,7 @@ RUN \
   wget -qO-                          "https://github.com/kubernetes-sigs/krew/releases/download/${KREW_VERSION}/krew-linux_${GO_ARCH}.tar.gz" | tar zxv -C /tmp ./krew-linux_${GO_ARCH} && mv /tmp/krew-linux_${GO_ARCH} /usr/local/bin/kubectl-krew && \
   wget -qO-                          "https://github.com/bitnami-labs/sealed-secrets/releases/download/v${KUBESEAL_VERSION}/kubeseal-${KUBESEAL_VERSION}-linux-${GO_ARCH}.tar.gz" | tar zxv -C /usr/local/bin kubeseal && \
   wget -qO-                          "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv${KUSTOMIZE5_VERSION}/kustomize_v${KUSTOMIZE5_VERSION}_linux_${GO_ARCH}.tar.gz" | tar zxv -C /usr/local/bin kustomize && \
+  wget -qO-                          "https://github.com/helmfile/vals/releases/download/v${HELM_VALS_VERSION}/vals_${HELM_VALS_VERSION}_linux_${GO_ARCH}.tar.gz" | tar zxv -C /usr/local/bin vals && \
   true
 
 COPY src/*.sh /usr/local/bin/
