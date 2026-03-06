@@ -23,14 +23,15 @@ USER root
 RUN apt-get update && apt-get install --no-install-recommends -y \
   ca-certificates \
   git git-lfs \
+  unzip \
   wget \
   jq && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 RUN groupadd -g $ARGOCD_USER_ID argocd && \
-  useradd -r -u $ARGOCD_USER_ID -g argocd argocd && \
-  mkdir -p /home/argocd && \
+  useradd -l -r -u $ARGOCD_USER_ID -g argocd argocd && \
+  mkdir -p /  home/argocd && \
   chown argocd:0 /home/argocd && \
   chmod g=u /home/argocd
 
@@ -61,6 +62,8 @@ ARG KUBECTL_VERSION="v1.35.0"
 # https://github.com/kubernetes-sigs/krew/releases/
 ARG KREW_VERSION="v0.4.5"
 
+ARG OP_VERSION="v2.32.1"
+
 # wget -qO "/usr/local/bin/jq"       "https://github.com/stedolan/jq/releases/download/jq-${JQ_VERSION}/jq-linux64" && \
 RUN \
   GO_ARCH=$(uname -m | sed -e 's/x86_64/amd64/' -e 's/\(arm\)\(64\)\?.*/\1\2/' -e 's/aarch64$/arm64/') && \
@@ -75,6 +78,10 @@ RUN \
   wget -qO-                          "https://github.com/bitnami-labs/sealed-secrets/releases/download/v${KUBESEAL_VERSION}/kubeseal-${KUBESEAL_VERSION}-linux-${GO_ARCH}.tar.gz" | tar zxv -C /usr/local/bin kubeseal && \
   wget -qO-                          "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv${KUSTOMIZE5_VERSION}/kustomize_v${KUSTOMIZE5_VERSION}_linux_${GO_ARCH}.tar.gz" | tar zxv -C /usr/local/bin kustomize && \
   wget -qO-                          "https://github.com/helmfile/vals/releases/download/v${HELM_VALS_VERSION}/vals_${HELM_VALS_VERSION}_linux_${GO_ARCH}.tar.gz" | tar zxv -C /usr/local/bin vals && \
+  wget "https://cache.agilebits.com/dist/1P/op2/pkg/${OP_VERSION}/op_linux_${GO_ARCH}_${OP_VERSION}.zip" -O op.zip && \
+  unzip -d op op.zip && \
+  mv op/op /usr/local/bin/ && \
+  rm -r op.zip op &&\
   true
 
 COPY src/*.sh /usr/local/bin/
