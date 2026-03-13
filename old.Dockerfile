@@ -1,28 +1,25 @@
-# Copyright Broadcom, Inc. All Rights Reserved.
-# SPDX-License-Identifier: APACHE-2.0
-# Modifications © 2025 Epitech
+# https://github.com/argoproj/argo-cd/blob/master/Dockerfile
+#
+# docker build --pull -t foobar .
+# docker run --rm -ti             --entrypoint bash foobar
+# docker run --rm -ti --user root --entrypoint bash foobar
 
-FROM docker.io/library/ubuntu:24.04
+ARG BASE_IMAGE=docker.io/library/ubuntu:24.04
 
-LABEL org.opencontainers.image.base.name="docker.io/library/ubuntu:24.04" \
-      org.opencontainers.image.description="Application packaged by Epitech" \
-      org.opencontainers.image.documentation="https://github.com/travisghansen/argo-cd-helmfile/README.md" \
-      org.opencontainers.image.source="https://github.com/travisghansen/argo-cd-helmfile" \
-      org.opencontainers.image.title="argocd-helmfile" \
-      org.opencontainers.image.vendor="Epitech" \
-      org.opencontainers.image.version="${ARGOCD_HELMFILE_VERSION}"
+FROM $BASE_IMAGE
 
-ENV DEBIAN_FRONTEND=noninteractive \
-ARGOCD_USER_ID=999 \
-TARGETPLATFORM=linux/amd64 \
-BUILDPLATFORM=linux/amd64
+LABEL org.opencontainers.image.source https://github.com/travisghansen/argo-cd-helmfile
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV ARGOCD_USER_ID=999
+
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+
+RUN echo "I am running on final $BUILDPLATFORM, building for $TARGETPLATFORM"
 
 USER root
 
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-
-## Install required packages and dependencies
-##
 RUN apt-get update && apt-get install --no-install-recommends -y \
   ca-certificates \
   git git-lfs \
@@ -32,8 +29,6 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-## Create argocd user and group, and set permissions for the home directory
-##
 RUN groupadd -g $ARGOCD_USER_ID argocd && \
   useradd -l -r -u $ARGOCD_USER_ID -g argocd argocd && \
   mkdir -p /  home/argocd && \
@@ -41,6 +36,11 @@ RUN groupadd -g $ARGOCD_USER_ID argocd && \
   chmod g=u /home/argocd
 
 # binary versions
+# https://github.com/FiloSottile/age/releases
+ARG AGE_VERSION="v1.3.1"
+# install via apt for now
+#ARG JQ_VERSION="1.6"
+ARG HELM2_VERSION="v2.17.0"
 # https://github.com/helm/helm/releases
 ARG HELM3_VERSION="v3.20.0"
 ARG HELM4_VERSION="v4.1.1"
@@ -48,12 +48,20 @@ ARG HELM4_VERSION="v4.1.1"
 ARG HELMFILE_VERSION="1.2.3"
 # https://github.com/kubernetes-sigs/kustomize/releases
 ARG KUSTOMIZE5_VERSION="5.8.1"
+# https://github.com/getsops/sops/releases
+ARG SOPS_VERSION="v3.10.2"
 # https://github.com/mikefarah/yq/releases
 ARG YQ_VERSION="v4.45.4"
 
 ARG HELM_VALS_VERSION="0.43.3"
 
+# relevant for kubectl if installed
 ARG KUBESEAL_VERSION="0.30.0"
+# curl -v -L 'https://dl.k8s.io/release/stable.txt'
+ARG KUBECTL_VERSION="v1.35.0"
+# https://github.com/kubernetes-sigs/krew/releases/
+ARG KREW_VERSION="v0.4.5"
+
 ARG OP_VERSION="v2.32.1"
 
 # wget -qO "/usr/local/bin/jq"       "https://github.com/stedolan/jq/releases/download/jq-${JQ_VERSION}/jq-linux64" && \
@@ -61,8 +69,12 @@ RUN \
   GO_ARCH=$(uname -m | sed -e 's/x86_64/amd64/' -e 's/\(arm\)\(64\)\?.*/\1\2/' -e 's/aarch64$/arm64/') && \
   wget -qO-                          "https://get.helm.sh/helm-${HELM4_VERSION}-linux-${GO_ARCH}.tar.gz" | tar zxv --strip-components=1 -C /tmp linux-${GO_ARCH}/helm && mv /tmp/helm /usr/local/bin/helm-v4 && \
   wget -qO-                          "https://get.helm.sh/helm-${HELM3_VERSION}-linux-${GO_ARCH}.tar.gz" | tar zxv --strip-components=1 -C /tmp linux-${GO_ARCH}/helm && mv /tmp/helm /usr/local/bin/helm-v3 && \
+  wget -qO "/usr/local/bin/sops"     "https://github.com/mozilla/sops/releases/download/${SOPS_VERSION}/sops-${SOPS_VERSION}.linux.${GO_ARCH}" && \
+  wget -qO-                          "https://github.com/FiloSottile/age/releases/download/${AGE_VERSION}/age-${AGE_VERSION}-linux-${GO_ARCH}.tar.gz" | tar zxv --strip-components=1 -C /usr/local/bin age/age age/age-keygen && \
   wget -qO-                          "https://github.com/helmfile/helmfile/releases/download/v${HELMFILE_VERSION}/helmfile_${HELMFILE_VERSION}_linux_${GO_ARCH}.tar.gz" | tar zxv -C /usr/local/bin helmfile && \
   wget -qO "/usr/local/bin/yq"       "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_${GO_ARCH}" && \
+  wget -qO "/usr/local/bin/kubectl"  "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${GO_ARCH}/kubectl" && \
+  wget -qO-                          "https://github.com/kubernetes-sigs/krew/releases/download/${KREW_VERSION}/krew-linux_${GO_ARCH}.tar.gz" | tar zxv -C /tmp ./krew-linux_${GO_ARCH} && mv /tmp/krew-linux_${GO_ARCH} /usr/local/bin/kubectl-krew && \
   wget -qO-                          "https://github.com/bitnami-labs/sealed-secrets/releases/download/v${KUBESEAL_VERSION}/kubeseal-${KUBESEAL_VERSION}-linux-${GO_ARCH}.tar.gz" | tar zxv -C /usr/local/bin kubeseal && \
   wget -qO-                          "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv${KUSTOMIZE5_VERSION}/kustomize_v${KUSTOMIZE5_VERSION}_linux_${GO_ARCH}.tar.gz" | tar zxv -C /usr/local/bin kustomize && \
   wget -qO-                          "https://github.com/helmfile/vals/releases/download/v${HELM_VALS_VERSION}/vals_${HELM_VALS_VERSION}_linux_${GO_ARCH}.tar.gz" | tar zxv -C /usr/local/bin vals && \
@@ -94,10 +106,12 @@ WORKDIR /home/argocd
 ENV HELM_CACHE_HOME=/home/argocd/helm/cache
 #ENV HELM_CONFIG_HOME=/home/argocd/helm/config
 ENV HELM_DATA_HOME=/home/argocd/helm/data
+ENV KREW_ROOT=/home/argocd/krew
+ENV PATH="${KREW_ROOT}/bin:$PATH"
 
 # plugin versions
 # https://github.com/databus23/helm-diff/releases
-ARG HELM_DIFF_VERSION="3.15.2"
+ARG HELM_DIFF_VERSION="3.15.0"
 # https://github.com/aslafy-z/helm-git/releases
 ARG HELM_GIT_VERSION="1.5.2"
 # https://github.com/jkroepke/helm-secrets/releases
@@ -107,6 +121,8 @@ RUN \
   helm-v3 plugin install https://github.com/databus23/helm-diff   --version ${HELM_DIFF_VERSION} && \
   helm-v3 plugin install https://github.com/aslafy-z/helm-git     --version ${HELM_GIT_VERSION} && \
   helm-v3 plugin install https://github.com/jkroepke/helm-secrets --version ${HELM_SECRETS_VERSION} && \
+  kubectl krew update && \
+  mkdir -p ${KREW_ROOT}/bin && \
   true
 
 # array is exec form, string is shell form
